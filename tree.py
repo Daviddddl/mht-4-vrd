@@ -3,11 +3,12 @@ import networkx as nx
 
 
 class TreeNode(object):
-    def __init__(self, name, score, tracklet, duration):
-        self.name = name
+    def __init__(self, triplet, score, subj_tracklet, obj_tracklet, duration):
+        self.triplet = triplet
         self.score = score
         self.id = '{}_{}_{}'.format(duration[0], duration[1], score)
-        self.tracklet = tracklet
+        self.subj_tracklet = subj_tracklet
+        self.obj_tracklet = obj_tracklet
         self.duration = duration
         self.duration_length = duration[1] - duration[0]
         self.children = list()
@@ -16,16 +17,36 @@ class TreeNode(object):
     def __repr__(self):
         return self.id
 
+    def get_all_children(self):
+        children = list()
+        if len(self.children) == 0:
+            children.append(self)
+        else:
+            for each_child in self.children:
+                children.append(each_child)
+        return children
+
+
+def get_path_score(path):
+    path_score = 0.
+    for each_node in path:
+        path_score += each_node.score
+    return path_score / len(path)
+
 
 class TrackTree(object):
-
-    def __init__(self, tree_root_name='root', score=0., tracklet=None, duration=None):
+    def __init__(self, tree_root_triplet=(None, None, None),
+                 score=0., subj_tracklet=None, obj_tracklet=None, duration=None):
         if duration is None:
             duration = [0, 0]
-        if tracklet is None:
-            tracklet = [0, 0, 0, 0]
+        if subj_tracklet is None:
+            subj_tracklet = [0, 0, 0, 0]
+        if obj_tracklet is None:
+            obj_tracklet = [0, 0, 0, 0]
         self.count = 0
-        self.tree = TreeNode(tree_root_name, score=score, tracklet=tracklet, duration=duration)
+        self.tree = TreeNode(tree_root_triplet, score=score,
+                             subj_tracklet=subj_tracklet, obj_tracklet=obj_tracklet,
+                             duration=duration)
         self.id = self.tree.id
         self.if_node_exist = False
         self.search_result_parent = None
@@ -192,27 +213,30 @@ class TrackTree(object):
             else:
                 self.add_recursion(parent, node, child)
 
+    def get_nodes(self, node):
+        nodes = []
+        if node.id == self.tree.id:
+            nodes.append(self.tree)
+        else:
+            for each_node in self.tree.get_all_children():
+                if each_node.id == node.id:
+                    nodes.append(each_node)
+        return nodes
 
-def main():
-    T = TrackTree(tree_root_name='adult',
-                  score=0.111,
-                  tracklet=[1, 1, 1, 1],
-                  duration=[0, 30])
-    A = TreeNode('adult', 0.1, [2, 2, 2, 2], [0, 30])
-    B = TreeNode('adult', 0.2, [3, 3, 3, 3], [0, 30])
-    C = TreeNode('adult', 0.3, [4, 4, 4, 4], [15, 45])
-    D = TreeNode('adult', 0.4, [5, 5, 5, 5], [30, 60])
-    E = TreeNode('adult', 0.5, [6, 6, 6, 6], [30, 60])
+    def get_paths(self, start_node=None):
+        if start_node is None:
+            start_nodes = [self.tree]
+        else:
+            start_nodes = self.get_nodes(start_node)
 
-    T.add(A)
-    T.add(B, A)
-    T.add(C, A)
-    T.add(C, B)
-    T.add(D, C)
-    T.add(E, A)
-
-    T.show_tree()
-
-
-if __name__ == '__main__':
-    main()
+        paths = []
+        for each_start_node in start_nodes:
+            if len(each_start_node.children) == 0:
+                paths.append([each_start_node])
+            else:
+                for each_child in each_start_node.children:
+                    for each_child_path in self.get_paths(each_child):
+                        each_path = [each_child] + each_child_path
+                        paths.append(each_path)
+                paths.sort(key=lambda i: get_path_score(i), reverse=True)
+        return paths
