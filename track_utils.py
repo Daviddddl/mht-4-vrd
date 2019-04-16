@@ -4,6 +4,7 @@ from copy import deepcopy
 
 import numpy as np
 from math import sin, cos, pi, sqrt
+from trajectory import Trajectory
 
 LARGE = 10000
 
@@ -14,15 +15,20 @@ def check_2_nodes(tree_tail, new_tree_node):
     if tail_start_f < new_node_start_f < tail_end_f < new_node_end_f:
         overlap_start, overlap_end = new_node_start_f, tail_end_f
         subj_tail_track = tree_tail.subj_tracklet[(overlap_start - tail_start_f):
-                                                  (overlap_start - tail_start_f)]
+                                                  (overlap_end - tail_start_f)]
         obj_tail_track = tree_tail.obj_tracklet[(overlap_start - tail_start_f):
-                                                (overlap_start - tail_start_f)]
+                                                (overlap_end - tail_start_f)]
         subj_new_track = new_tree_node.subj_tracklet[(overlap_start - new_node_start_f):
-                                                     (overlap_start - new_node_start_f)]
+                                                     (overlap_end - new_node_start_f)]
         obj_new_track = new_tree_node.obj_tracklet[(overlap_start - new_node_start_f):
-                                                   (overlap_start - new_node_start_f)]
+                                                   (overlap_end - new_node_start_f)]
+        # generate trajectory
+        subj_tail_traj = Trajectory(overlap_start, overlap_end, subj_tail_track, tree_tail.score)
+        subj_new_traj = Trajectory(overlap_start, overlap_end, subj_new_track, new_tree_node.score)
+        obj_tail_traj = Trajectory(overlap_start, overlap_end, obj_tail_track, tree_tail.score)
+        obj_new_traj = Trajectory(overlap_start, overlap_end, obj_new_track, new_tree_node.score)
 
-        return check_overlap(subj_tail_track, subj_new_track) and check_overlap(obj_tail_track, obj_new_track)
+        return check_overlap(subj_tail_traj, subj_new_traj) and check_overlap(obj_tail_traj, obj_new_traj)
 
 
 def check_overlap(traj1, traj2, iou_thr=0.5):
