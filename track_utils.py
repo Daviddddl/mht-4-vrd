@@ -8,6 +8,23 @@ from math import sin, cos, pi, sqrt
 LARGE = 10000
 
 
+def check_2_nodes(tree_tail, new_tree_node):
+    tail_start_f, tail_end_f = tree_tail.duration
+    new_node_start_f, new_node_end_f = new_tree_node.duration
+    if tail_start_f < new_node_start_f < tail_end_f < new_node_end_f:
+        overlap_start, overlap_end = new_node_start_f, tail_end_f
+        subj_tail_track = tree_tail.subj_tracklet[(overlap_start - tail_start_f):
+                                                  (overlap_start - tail_start_f)]
+        obj_tail_track = tree_tail.obj_tracklet[(overlap_start - tail_start_f):
+                                                (overlap_start - tail_start_f)]
+        subj_new_track = new_tree_node.subj_tracklet[(overlap_start - new_node_start_f):
+                                                     (overlap_start - new_node_start_f)]
+        obj_new_track = new_tree_node.obj_tracklet[(overlap_start - new_node_start_f):
+                                                   (overlap_start - new_node_start_f)]
+
+        return check_overlap(subj_tail_track, subj_new_track) and check_overlap(obj_tail_track, obj_new_track)
+
+
 def check_overlap(traj1, traj2, iou_thr=0.5):
     return traj_iou_over_common_frames(traj1, traj2) >= iou_thr
 
@@ -103,6 +120,7 @@ def _union(bboxes1, bboxes2):
         unions = np.add.outer(area1, area2)
     return unions
 
+
 class PrioItem:
     """Item storable in PriorityQueue."""
 
@@ -135,6 +153,7 @@ def connected_components(connections):
             seen.add(node)
             nodes |= connections[node] - seen
             yield node
+
     for node in list(connections.keys()):
         if node not in seen:
             yield set(component(node))
@@ -149,7 +168,7 @@ def overlap(a, b):
 def overlap_pa(a, b):
     """Return percentage of bbox a being in b."""
     intersection = max(0, min(a[1], b[1]) - max(a[0], b[0])) \
-        * max(0, min(a[3], b[3]) - max(a[2], b[2]))
+                   * max(0, min(a[3], b[3]) - max(a[2], b[2]))
     aa = (a[1] - a[0]) * (a[3] - a[2])
     return intersection / aa
 
@@ -175,11 +194,11 @@ def gaussian_bbox(x, P, nstd=2):
     r1, r2, theta = cov_ellipse(P, nstd)
     ux = r1 * cos(theta)
     uy = r1 * sin(theta)
-    vx = r2 * cos(theta + pi/2)
-    vy = r2 * sin(theta + pi/2)
+    vx = r2 * cos(theta + pi / 2)
+    vy = r2 * sin(theta + pi / 2)
 
-    dx = sqrt(ux*ux + vx*vx)
-    dy = sqrt(uy*uy + vy*vy)
+    dx = sqrt(ux * ux + vx * vx)
+    dy = sqrt(uy * uy + vy * vy)
 
     return (float(x[0] - dx),
             float(x[0] + dx),

@@ -4,6 +4,8 @@ from scipy.spatial.distance import mahalanobis
 
 from tree import TrackTree, TreeNode
 
+from track_utils import check_2_nodes
+
 import numpy as np
 
 
@@ -53,13 +55,16 @@ def origin_mht_relational_association(short_term_relations, truncate_per_segment
                 # obj_gating = get_gating(new_tree_node.obj_tracklet)
 
                 # update tree
-
-                # track Scoring
+                for each_path in tree_paths:
+                    if check_2_nodes(each_path[-1], new_tree_node):
+                        track_tree.add(new_tree_node, each_path[-1])
+                    else:
+                        track_tree.add()
+                    # track Scoring
 
                 # global hypothesis formation
 
                 # track tree pruning
-
 
 
 def get_gating(pre_traj, distance_threshold=0.5):
