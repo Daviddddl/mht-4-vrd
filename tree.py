@@ -1,3 +1,5 @@
+import json
+
 import matplotlib.pyplot as plt
 import networkx as nx
 
@@ -240,3 +242,49 @@ class TrackTree(object):
                         paths.append(each_path)
                 paths.sort(key=lambda i: get_path_score(i), reverse=True)
         return paths
+
+
+if __name__ == '__main__':
+    with open('test.json', 'r') as in_f:
+        test_data = json.load(in_f)
+    tree_dict = dict()
+    for each_rela in test_data:
+        subj, pred_rela, obj = each_rela['triplet']
+        score = each_rela['score']
+        subj_tracklet = each_rela['sub_traj']
+        obj_tracklet = each_rela['obj_traj']
+        duration = each_rela['duration']
+        each_triplet = (subj, pred_rela, obj)  # This is tree name
+
+        if each_triplet not in tree_dict.keys():
+            tree_dict[each_triplet] = TrackTree()
+            new_tree_node = TreeNode(triplet=each_triplet,
+                                     score=score,
+                                     subj_tracklet=subj_tracklet,
+                                     obj_tracklet=obj_tracklet,
+                                     duration=duration)
+            tree_dict[each_triplet].add(new_tree_node)
+        else:
+            track_tree = tree_dict[each_triplet]
+            new_tree_node = TreeNode(triplet=each_triplet,
+                                     score=score,
+                                     subj_tracklet=subj_tracklet,
+                                     obj_tracklet=obj_tracklet,
+                                     duration=duration)
+
+            if duration[0] == 0:
+                track_tree.add(new_tree_node)
+            else:
+                tree_paths = track_tree.get_paths()
+
+                for each_path in tree_paths:
+                    # if check_2_nodes(each_path[-1], new_tree_node):
+                    track_tree.add(new_tree_node, each_path[-1])
+
+    for each_triplet, each_tree in tree_dict.items():
+        print(each_triplet, each_tree.get_paths())
+        print(each_tree.tree)
+        print(each_tree.tree.children)
+        for each_child in each_tree.tree.children:
+            print(each_child.children)
+        exit(0)

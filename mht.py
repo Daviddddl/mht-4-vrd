@@ -12,7 +12,7 @@ import numpy as np
 import heapq
 
 
-def origin_mht_relational_association(short_term_relations, truncate_per_segment=3, top_tree=1):
+def origin_mht_relational_association(short_term_relations, truncate_per_segment=100, top_tree=2):
     """
     This is not the very official MHT framework, which mainly is 4 frame-level.
     This func is to associating short-term-relations relational.
@@ -59,14 +59,14 @@ def origin_mht_relational_association(short_term_relations, truncate_per_segment
                 # obj_gating = get_gating(new_tree_node.obj_tracklet)
 
                 # add multi root nodes
-                if new_tree_node.duration[0] == 0:
-                    # add a new root node
-                    track_tree.add(new_tree_node)
-                else:
-                    # update tree
-                    for each_path in tree_paths:
-                        if check_2_nodes(each_path[-1], new_tree_node):
-                            track_tree.add(new_tree_node, each_path[-1])
+                # if new_tree_node.duration[0] == 0:
+                #     # add a new root node
+                #     track_tree.add(new_tree_node)
+                # else:
+                # update tree
+                for each_path in tree_paths:
+                    # if check_2_nodes(each_path[-1], new_tree_node):
+                    track_tree.add(new_tree_node, each_path[-1])
 
                 # track Scoring
 
@@ -74,12 +74,13 @@ def origin_mht_relational_association(short_term_relations, truncate_per_segment
 
                 # track tree pruning
 
-                # generate results
-                # print("Begin 2 generate results")
-                save_res_path = 'test_out.json'
-                top_k_paths, top_k_scores = generate_results(track_tree, save_res_path, top_tree)
-                print(top_k_scores)
-                print(top_k_paths)
+    # generate results
+    for each_triplet, each_tree in tree_dict.items():
+        print(each_triplet, each_tree.get_paths())
+        # save_res_path = 'test_out.json'
+        # top_k_paths, top_k_scores = generate_results(each_tree, save_res_path, top_tree)
+        # print(top_k_scores)
+        # print(top_k_paths)
 
 
 def get_gating(pre_traj, distance_threshold=0.5):
