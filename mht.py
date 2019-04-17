@@ -9,10 +9,10 @@ from track_utils import check_2_nodes
 
 import numpy as np
 
-import heapq
+from relation import VideoRelation
 
 
-def origin_mht_relational_association(short_term_relations, truncate_per_segment=100, top_tree=2):
+def origin_mht_relational_association(short_term_relations, truncate_per_segment=100, top_tree=3):
     """
     This is not the very official MHT framework, which mainly is 4 frame-level.
     This func is to associating short-term-relations relational.
@@ -71,10 +71,8 @@ def origin_mht_relational_association(short_term_relations, truncate_per_segment
     # generate results
     for each_triplet, each_tree in tree_dict.items():
         save_res_path = 'test_out.json'
-        top_k_paths, top_k_scores = generate_results(each_tree, save_res_path, top_tree)
-        print(each_triplet)
-        print(top_k_scores)
-        print(top_k_paths)
+        top_k_paths, top_k_scores = generate_results(each_tree, top_tree)
+        print(each_triplet, len(top_k_scores), len(top_k_paths))
 
 
 def get_gating(pre_traj, distance_threshold=0.5):
@@ -122,10 +120,10 @@ def global_hypo(track_trees):
     """
 
 
-def generate_results(track_tree, save_res_path, top_k=3):
+def generate_results(track_tree, top_k):
     """
+    :param top_k:
     :param track_tree:
-    :param save_res_path:
     :return:
     """
     path_score_dict = dict()
@@ -142,6 +140,20 @@ def generate_results(track_tree, save_res_path, top_k=3):
             top_k_res.append(path_score_dict[each_key])
         top_k_scores = sorted_keys
     return top_k_res, top_k_scores
+
+
+def associate_path(track_path):
+    result = None
+    for each_node in track_path:
+        sub, pred, obj = each_node.triplet
+        straj = each_node.subj_tracklet
+        otraj = each_node.obj_tracklet
+        conf_score = each_node.score
+        if result is None:
+            result = VideoRelation(sub, pred, obj, straj, otraj, conf_score)
+        else:
+            result.extend(straj, otraj, conf_score)
+    return result
 
 
 if __name__ == '__main__':
