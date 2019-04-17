@@ -2,6 +2,7 @@ import json
 
 import matplotlib.pyplot as plt
 import networkx as nx
+from track_utils import check_2_nodes
 
 
 class TreeNode(object):
@@ -227,20 +228,15 @@ class TrackTree(object):
 
     def get_paths(self, start_node=None):
         if start_node is None:
-            start_nodes = [self.tree]
-        else:
-            start_nodes = self.get_nodes(start_node)
-
+            start_node = self.tree
         paths = []
-        for each_start_node in start_nodes:
-            if len(each_start_node.children) == 0:
-                paths.append([each_start_node])
-            else:
-                for each_child in each_start_node.children:
-                    for each_child_path in self.get_paths(each_child):
-                        each_path = [each_child] + each_child_path
-                        paths.append(each_path)
-                paths.sort(key=lambda i: get_path_score(i), reverse=True)
+        each_start_node = start_node
+        if len(each_start_node.children) == 0:
+            paths.append([each_start_node])
+        else:
+            for each_child in each_start_node.children:
+                for each_child_path in self.get_paths(each_child):
+                    paths.append([each_start_node] + each_child_path)
         return paths
 
 
@@ -278,13 +274,8 @@ if __name__ == '__main__':
                 tree_paths = track_tree.get_paths()
 
                 for each_path in tree_paths:
-                    # if check_2_nodes(each_path[-1], new_tree_node):
-                    track_tree.add(new_tree_node, each_path[-1])
+                    if check_2_nodes(each_path[-1], new_tree_node):
+                        track_tree.add(new_tree_node, each_path[-1])
 
     for each_triplet, each_tree in tree_dict.items():
         print(each_triplet, each_tree.get_paths())
-        print(each_tree.tree)
-        print(each_tree.tree.children)
-        for each_child in each_tree.tree.children:
-            print(each_child.children)
-        exit(0)

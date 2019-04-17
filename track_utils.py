@@ -29,6 +29,7 @@ def check_2_nodes(tree_tail, new_tree_node):
         obj_new_traj = Trajectory(overlap_start, overlap_end, obj_new_track, new_tree_node.score)
 
         return check_overlap(subj_tail_traj, subj_new_traj) and check_overlap(obj_tail_traj, obj_new_traj)
+    return False
 
 
 def check_overlap(traj1, traj2, iou_thr=0.5):

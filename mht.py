@@ -41,11 +41,13 @@ def origin_mht_relational_association(short_term_relations, truncate_per_segment
             each_triplet = (subj, pred_rela, obj)  # This is tree name
 
             if each_triplet not in tree_dict.keys():
-                tree_dict[each_triplet] = TrackTree(tree_root_triplet=each_triplet,
-                                                    score=score,
-                                                    subj_tracklet=subj_tracklet,
-                                                    obj_tracklet=obj_tracklet,
-                                                    duration=duration)
+                tree_dict[each_triplet] = TrackTree()
+                new_tree_node = TreeNode(triplet=each_triplet,
+                                         score=score,
+                                         subj_tracklet=subj_tracklet,
+                                         obj_tracklet=obj_tracklet,
+                                         duration=duration)
+                tree_dict[each_triplet].add(new_tree_node)
             else:
                 track_tree = tree_dict[each_triplet]
                 new_tree_node = TreeNode(triplet=each_triplet,
@@ -53,34 +55,26 @@ def origin_mht_relational_association(short_term_relations, truncate_per_segment
                                          subj_tracklet=subj_tracklet,
                                          obj_tracklet=obj_tracklet,
                                          duration=duration)
-                tree_paths = track_tree.get_paths()
 
-                # subj_gating = get_gating(new_tree_node.subj_tracklet)
-                # obj_gating = get_gating(new_tree_node.obj_tracklet)
+                if duration[0] == 0:
+                    track_tree.add(new_tree_node)
+                else:
+                    for each_path in track_tree.get_paths():
+                        if check_2_nodes(each_path[-1], new_tree_node):
+                            track_tree.add(new_tree_node, each_path[-1])
+    # track Scoring
 
-                # add multi root nodes
-                # if new_tree_node.duration[0] == 0:
-                #     # add a new root node
-                #     track_tree.add(new_tree_node)
-                # else:
-                # update tree
-                for each_path in tree_paths:
-                    # if check_2_nodes(each_path[-1], new_tree_node):
-                    track_tree.add(new_tree_node, each_path[-1])
+    # global hypothesis formation
 
-                # track Scoring
-
-                # global hypothesis formation
-
-                # track tree pruning
+    # track tree pruning
 
     # generate results
     for each_triplet, each_tree in tree_dict.items():
-        print(each_triplet, each_tree.get_paths())
-        # save_res_path = 'test_out.json'
-        # top_k_paths, top_k_scores = generate_results(each_tree, save_res_path, top_tree)
-        # print(top_k_scores)
-        # print(top_k_paths)
+        save_res_path = 'test_out.json'
+        top_k_paths, top_k_scores = generate_results(each_tree, save_res_path, top_tree)
+        print(each_triplet)
+        print(top_k_scores)
+        print(top_k_paths)
 
 
 def get_gating(pre_traj, distance_threshold=0.5):
@@ -137,14 +131,20 @@ def generate_results(track_tree, save_res_path, top_k=3):
     path_score_dict = dict()
     for each_path in track_tree.get_paths():
         path_score_dict[track_score(each_path)] = each_path
-    sorted_keys = sorted(path_score_dict.keys())
+    sorted_keys = sorted(path_score_dict.keys(), reverse=True)
     top_k_res = list()
-    for i in range(top_k):
-        top_k_res.append(path_score_dict[sorted_keys[i]])
-    return top_k_res, sorted_keys[:top_k]
+    if len(sorted_keys) >= top_k:
+        for i in range(top_k):
+            top_k_res.append(path_score_dict[sorted_keys[i]])
+        top_k_scores = sorted_keys[:top_k]
+    else:
+        for each_key in sorted_keys:
+            top_k_res.append(path_score_dict[each_key])
+        top_k_scores = sorted_keys
+    return top_k_res, top_k_scores
 
 
 if __name__ == '__main__':
-    with open('test.json', 'r') as in_f:
+    with open('test2.json', 'r') as in_f:
         short_term_relations = json.load(in_f)
     origin_mht_relational_association(short_term_relations)
