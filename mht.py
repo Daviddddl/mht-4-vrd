@@ -11,6 +11,8 @@ import numpy as np
 
 from relation import VideoRelation
 
+from trajectory import Trajectory
+
 
 def origin_mht_relational_association(short_term_relations, truncate_per_segment=100, top_tree=3):
     """
@@ -69,10 +71,13 @@ def origin_mht_relational_association(short_term_relations, truncate_per_segment
     # track tree pruning
 
     # generate results
+    video_relation_list = list()
     for each_triplet, each_tree in tree_dict.items():
         save_res_path = 'test_out.json'
         top_k_paths, top_k_scores = generate_results(each_tree, top_tree)
-        print(each_triplet, len(top_k_scores), len(top_k_paths))
+        for each_path in top_k_paths:
+            video_relation_list.append(associate_path(each_path))
+    return [r.serialize() for r in video_relation_list]
 
 
 def get_gating(pre_traj, distance_threshold=0.5):
@@ -145,18 +150,26 @@ def generate_results(track_tree, top_k):
 def associate_path(track_path):
     result = None
     for each_node in track_path:
-        sub, pred, obj = each_node.triplet
-        straj = each_node.subj_tracklet
-        otraj = each_node.obj_tracklet
-        conf_score = each_node.score
-        if result is None:
-            result = VideoRelation(sub, pred, obj, straj, otraj, conf_score)
-        else:
-            result.extend(straj, otraj, conf_score)
+        if each_node.duration != [0, 0]:
+            sub, pred, obj = each_node.triplet
+            pstart, pend = each_node.duration
+            conf_score = each_node.score
+            straj = Trajectory(pstart, pend, each_node.subj_tracklet, conf_score)
+            otraj = Trajectory(pstart, pend, each_node.obj_tracklet, conf_score)
+
+            if result is None:
+                result = VideoRelation(sub, pred, obj, straj, otraj, conf_score)
+            else:
+                result.extend(straj, otraj, conf_score)
     return result
 
 
 if __name__ == '__main__':
-    with open('test2.json', 'r') as in_f:
-        short_term_relations = json.load(in_f)
-    origin_mht_relational_association(short_term_relations)
+    with open('test.json', 'r') as test_st_rela_f:
+        test_st_rela = json.load(test_st_rela_f)
+
+    result = origin_mht_relational_association(test_st_rela)
+
+    print(len(result))
+    for each_res in result:
+        print(each_res)
