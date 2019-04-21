@@ -1,17 +1,18 @@
 import json
 from collections import defaultdict
 
+import numpy as np
 from scipy.spatial.distance import mahalanobis
 
+from relation import VideoRelation
+from track_utils import check_2_nodes, traj_iou_over_common_frames, merge_trajs
+from trajectory import Trajectory
 from tree import TrackTree, TreeNode
 
-from track_utils import check_2_nodes
-
-import numpy as np
-
-from relation import VideoRelation
-
-from trajectory import Trajectory
+anno_rpath = 'baseline/vidvrd-dataset'
+video_rpath = 'baseline/vidvrd-dataset/videos'
+splits = ['train', 'test']
+so_id = dict()
 
 
 def origin_mht_relational_association(short_term_relations, truncate_per_segment=100, top_tree=3):
@@ -35,25 +36,35 @@ def origin_mht_relational_association(short_term_relations, truncate_per_segment
 
         # Traversing truncate_per_segment relations
         for each_rela in sorted_relations:
-            subj, pred_rela, obj = each_rela['triplet']
+            subj_label, pred_rela, obj_label = each_rela['triplet']
             score = each_rela['score']
             subj_tracklet = each_rela['sub_traj']
             obj_tracklet = each_rela['obj_traj']
             duration = each_rela['duration']
-            each_triplet = (subj, pred_rela, obj)  # This is tree name
 
-            if each_triplet not in tree_dict.keys():
-                tree_dict[each_triplet] = TrackTree()
-                new_tree_node = TreeNode(triplet=each_triplet,
+            subj_traj = Trajectory(duration[0], duration[1], subj_tracklet, score)
+            obj_traj = Trajectory(duration[0], duration[1], obj_tracklet, score)
+
+            subj = get_obj_id(subj_label, subj_traj)
+            obj = get_obj_id(obj_label, obj_traj)
+            each_tree = (subj, obj)
+
+            if each_tree not in tree_dict.keys():
+                tree_dict[each_tree] = TrackTree()
+                new_tree_node = TreeNode(name=each_tree,
+                                         so_labels=(subj_label, obj_label),
                                          score=score,
+                                         st_predicate=pred_rela,
                                          subj_tracklet=subj_tracklet,
                                          obj_tracklet=obj_tracklet,
                                          duration=duration)
-                tree_dict[each_triplet].add(new_tree_node)
+                tree_dict[each_tree].add(new_tree_node)
             else:
-                track_tree = tree_dict[each_triplet]
-                new_tree_node = TreeNode(triplet=each_triplet,
+                track_tree = tree_dict[each_tree]
+                new_tree_node = TreeNode(name=each_tree,
+                                         so_labels=(subj_label, obj_label),
                                          score=score,
+                                         st_predicate=pred_rela,
                                          subj_tracklet=subj_tracklet,
                                          obj_tracklet=obj_tracklet,
                                          duration=duration)
@@ -73,11 +84,32 @@ def origin_mht_relational_association(short_term_relations, truncate_per_segment
     # generate results
     video_relation_list = list()
     for each_triplet, each_tree in tree_dict.items():
-        save_res_path = 'test_out.json'
+        # save_res_path = 'test_out.json'
         top_k_paths, top_k_scores = generate_results(each_tree, top_tree)
         for each_path in top_k_paths:
             video_relation_list.append(associate_path(each_path))
     return [r.serialize() for r in video_relation_list]
+
+
+def get_obj_id(obj, obj_traj, overlap_threshold=0.5):
+    if obj in so_id.keys():
+        obj_id = -1
+        obj_track_overlap = overlap_threshold
+        max_id = -1
+        for each_obj_id, each_obj_traj in so_id[obj].items():
+            each_overlap = traj_iou_over_common_frames(obj_traj, each_obj_traj)
+            max_id = max(max_id, each_obj_id)
+            if each_overlap > obj_track_overlap >= overlap_threshold:
+                obj_track_overlap = each_overlap
+                obj_id = each_obj_id
+        if obj_id == -1:
+            so_id[obj][max_id + 1] = obj_traj
+        else:
+            so_id[obj][obj_id] = merge_trajs(so_id[obj][obj_id], obj_traj)
+    else:
+        obj_id = 0
+        so_id[obj] = {0: obj_traj}
+    return obj_id
 
 
 def get_gating(pre_traj, distance_threshold=0.5):
@@ -151,7 +183,8 @@ def associate_path(track_path):
     result = None
     for each_node in track_path:
         if each_node.duration != [0, 0]:
-            sub, pred, obj = each_node.triplet
+            sub, obj = each_node.so_labels
+            pred = each_node.st_predicate
             pstart, pend = each_node.duration
             conf_score = each_node.score
             straj = Trajectory(pstart, pend, each_node.subj_tracklet, conf_score)
@@ -165,7 +198,7 @@ def associate_path(track_path):
 
 
 if __name__ == '__main__':
-    with open('test.json', 'r') as test_st_rela_f:
+    with open('test2.json', 'r') as test_st_rela_f:
         test_st_rela = json.load(test_st_rela_f)
 
     result = origin_mht_relational_association(test_st_rela)

@@ -1,19 +1,18 @@
-import json
-
 import matplotlib.pyplot as plt
 import networkx as nx
-from track_utils import check_2_nodes
 
 
 class TreeNode(object):
-    def __init__(self, triplet, score, subj_tracklet, obj_tracklet, duration):
-        self.triplet = triplet
+    def __init__(self, name, so_labels, st_predicate, score, subj_tracklet, obj_tracklet, duration):
+        self.name = name
+        self.so_labels = so_labels
         self.score = score
-        self.id = '{}_{}_{}'.format(duration[0], duration[1], score)
+        self.id = '{}_{}_{}'.format(name, duration[0], duration[1])
         self.subj_tracklet = subj_tracklet
         self.obj_tracklet = obj_tracklet
         self.duration = duration
         self.duration_length = duration[1] - duration[0]
+        self.st_predicate = st_predicate
         self.children = list()
         self.parents = list()
 
@@ -38,7 +37,7 @@ def get_path_score(path):
 
 
 class TrackTree(object):
-    def __init__(self, tree_root_triplet=(None, None, None),
+    def __init__(self, tree_name=(None, None), so_labels=(None, None), st_predicate=None,
                  score=0., subj_tracklet=None, obj_tracklet=None, duration=None):
         if duration is None:
             duration = [0, 0]
@@ -47,7 +46,7 @@ class TrackTree(object):
         if obj_tracklet is None:
             obj_tracklet = [0, 0, 0, 0]
         self.count = 0
-        self.tree = TreeNode(tree_root_triplet, score=score,
+        self.tree = TreeNode(tree_name, so_labels=so_labels, score=score, st_predicate=st_predicate,
                              subj_tracklet=subj_tracklet, obj_tracklet=obj_tracklet,
                              duration=duration)
         self.id = self.tree.id
@@ -239,43 +238,3 @@ class TrackTree(object):
                     paths.append([each_start_node] + each_child_path)
         return paths
 
-
-if __name__ == '__main__':
-    with open('test.json', 'r') as in_f:
-        test_data = json.load(in_f)
-    tree_dict = dict()
-    for each_rela in test_data:
-        subj, pred_rela, obj = each_rela['triplet']
-        score = each_rela['score']
-        subj_tracklet = each_rela['sub_traj']
-        obj_tracklet = each_rela['obj_traj']
-        duration = each_rela['duration']
-        each_triplet = (subj, pred_rela, obj)  # This is tree name
-
-        if each_triplet not in tree_dict.keys():
-            tree_dict[each_triplet] = TrackTree()
-            new_tree_node = TreeNode(triplet=each_triplet,
-                                     score=score,
-                                     subj_tracklet=subj_tracklet,
-                                     obj_tracklet=obj_tracklet,
-                                     duration=duration)
-            tree_dict[each_triplet].add(new_tree_node)
-        else:
-            track_tree = tree_dict[each_triplet]
-            new_tree_node = TreeNode(triplet=each_triplet,
-                                     score=score,
-                                     subj_tracklet=subj_tracklet,
-                                     obj_tracklet=obj_tracklet,
-                                     duration=duration)
-
-            if duration[0] == 0:
-                track_tree.add(new_tree_node)
-            else:
-                tree_paths = track_tree.get_paths()
-
-                for each_path in tree_paths:
-                    if check_2_nodes(each_path[-1], new_tree_node):
-                        track_tree.add(new_tree_node, each_path[-1])
-
-    for each_triplet, each_tree in tree_dict.items():
-        print(each_triplet, each_tree.get_paths())

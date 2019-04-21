@@ -5,6 +5,7 @@ from copy import deepcopy
 import numpy as np
 from math import sin, cos, pi, sqrt
 from trajectory import Trajectory
+from dlib import drectangle
 
 LARGE = 10000
 
@@ -126,6 +127,25 @@ def _union(bboxes1, bboxes2):
         area2 = np.sum(w * h, axis=0)
         unions = np.add.outer(area1, area2)
     return unions
+
+
+def merge_trajs(traj_1, traj_2):
+    try:
+        assert traj_1.pend > traj_2.pstart and traj_1.pstart < traj_2.pend
+    except AssertionError:
+        print('{}-{} {}-{}'.format(traj_1.pstart, traj_1.pend, traj_2.pstart, traj_2.pend))
+    overlap_length = max(traj_1.pend - traj_2.pstart, 0)
+    for i in range(overlap_length):
+        roi_1 = traj_1.rois[traj_1.length() - overlap_length + i]
+        roi_2 = traj_2.rois[i]
+        left = (roi_1.left() + roi_2.left()) / 2
+        top = (roi_1.top() + roi_2.top()) / 2
+        right = (roi_1.right() + roi_2.right()) / 2
+        bottom = (roi_1.bottom() + roi_2.bottom()) / 2
+        traj_1.rois[traj_1.length() - overlap_length + i] = drectangle(left, top, right, bottom)
+    for i in range(overlap_length, traj_2.length()):
+        traj_1.predict(traj_2.rois[i])
+    return traj_1
 
 
 class PrioItem:
