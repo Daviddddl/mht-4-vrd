@@ -24,6 +24,7 @@ def origin_mht_relational_association(short_term_relations, truncate_per_segment
     :param truncate_per_segment:
     :return:
     """
+    so_id.clear()
     pstart_relations = defaultdict(list)
     for r in short_term_relations:
         pstart_relations[r['duration'][0]].append(r)
@@ -75,12 +76,6 @@ def origin_mht_relational_association(short_term_relations, truncate_per_segment
                     for each_path in track_tree.get_paths():
                         if check_2_nodes(each_path[-1], new_tree_node):
                             track_tree.add(new_tree_node, each_path[-1])
-    # track Scoring
-
-    # global hypothesis formation
-
-    # track tree pruning
-
     # generate results
     video_relation_list = list()
     for each_triplet, each_tree in tree_dict.items():
@@ -181,19 +176,32 @@ def generate_results(track_tree, top_k):
 
 def associate_path(track_path):
     result = None
+    preds = dict()
+    for each_node in track_path:
+        each_st_predicate = each_node.st_predicate
+        if each_st_predicate is not None:
+            if each_st_predicate in preds.keys():
+                preds[each_st_predicate].append(each_node.score)
+            else:
+                preds[each_st_predicate] = [each_node.score]
+
+    for each_pred, each_scores in preds.items():
+        preds[each_pred] = np.mean(each_scores)
+
+    preds_list = sorted(preds.items(), key=lambda item: item[1], reverse=True)
     for each_node in track_path:
         if each_node.duration != [0, 0]:
             sub, obj = each_node.so_labels
-            pred = each_node.st_predicate
             pstart, pend = each_node.duration
             conf_score = each_node.score
             straj = Trajectory(pstart, pend, each_node.subj_tracklet, conf_score)
             otraj = Trajectory(pstart, pend, each_node.obj_tracklet, conf_score)
 
-            if result is None:
-                result = VideoRelation(sub, pred, obj, straj, otraj, conf_score)
-            else:
-                result.extend(straj, otraj, conf_score)
+            for each_pred, pred_score in preds_list:
+                if result is None:
+                    result = VideoRelation(sub, each_pred, obj, straj, otraj, conf_score + pred_score)
+                else:
+                    result.extend(straj, otraj, conf_score + pred_score)
     return result
 
 
