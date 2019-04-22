@@ -15,12 +15,12 @@ so_id = dict()
 
 
 def origin_mht_relational_association(short_term_relations,
-                                      truncate_per_segment=100, top_tree=3, overlap=0.3, iou_thr=0.5):
+                                      truncate_per_segment=100, top_tree=10, overlap=0.3, iou_thr=0.3):
     """
     This is not the very official MHT framework, which mainly is 4 frame-level.
     This func is to associating short-term-relations relational.
     :param overlap: overlap 4 obj id, higher, more
-    :param iou_thr: iou for associate
+    :param iou_thr: iou for associate, higher, less
     :param top_tree:
     :param short_term_relations:
     :param truncate_per_segment:
