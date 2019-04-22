@@ -2,7 +2,6 @@ import json
 from collections import defaultdict
 
 import numpy as np
-from scipy.spatial.distance import mahalanobis
 
 from relation import VideoRelation
 from track_utils import check_2_nodes, traj_iou_over_common_frames, merge_trajs
@@ -20,7 +19,7 @@ def origin_mht_relational_association(short_term_relations,
     """
     This is not the very official MHT framework, which mainly is 4 frame-level.
     This func is to associating short-term-relations relational.
-    :param overlap: overlap 4 obj id
+    :param overlap: overlap 4 obj id, higher, more
     :param iou_thr: iou for associate
     :param top_tree:
     :param short_term_relations:
@@ -73,11 +72,18 @@ def origin_mht_relational_association(short_term_relations,
                             track_tree.add(new_tree_node, each_path[-1])
 
     # generate results
+    pred_set = set()
     video_relation_list = list()
     for each_pair, each_tree in tree_dict.items():
+        for each_path in each_tree.get_paths():
+            for each_node in each_path:
+                pred_set.add(each_node.st_predicate)
+
         top_k_paths, top_k_scores = generate_results(each_tree, top_tree)
         for each_path in top_k_paths:
             video_relation_list.append(associate_path(each_path))
+
+    print(pred_set)
     return [r.serialize() for r in video_relation_list]
 
 

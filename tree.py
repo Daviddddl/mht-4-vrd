@@ -7,7 +7,7 @@ class TreeNode(object):
         self.name = name
         self.so_labels = so_labels
         self.score = score
-        self.id = '{}_{}_{}_{}'.format(name, st_predicate, duration[0], duration[1])
+        self.id = '{}_{}_{}_{}_{}'.format(name, st_predicate, score, duration[0], duration[1])
         self.subj_tracklet = subj_tracklet
         self.obj_tracklet = obj_tracklet
         self.duration = duration
