@@ -10,7 +10,7 @@ from dlib import drectangle
 LARGE = 10000
 
 
-def check_2_nodes(tree_tail, new_tree_node):
+def check_2_nodes(tree_tail, new_tree_node, iou_thr):
     tail_start_f, tail_end_f = tree_tail.duration
     new_node_start_f, new_node_end_f = new_tree_node.duration
     if tail_start_f < new_node_start_f < tail_end_f < new_node_end_f:
@@ -29,11 +29,11 @@ def check_2_nodes(tree_tail, new_tree_node):
         obj_tail_traj = Trajectory(overlap_start, overlap_end, obj_tail_track, tree_tail.score)
         obj_new_traj = Trajectory(overlap_start, overlap_end, obj_new_track, new_tree_node.score)
 
-        return check_overlap(subj_tail_traj, subj_new_traj) and check_overlap(obj_tail_traj, obj_new_traj)
+        return check_overlap(subj_tail_traj, subj_new_traj, iou_thr) and check_overlap(obj_tail_traj, obj_new_traj, iou_thr)
     return False
 
 
-def check_overlap(traj1, traj2, iou_thr=0.5):
+def check_overlap(traj1, traj2, iou_thr):
     return traj_iou_over_common_frames(traj1, traj2) >= iou_thr
 
 

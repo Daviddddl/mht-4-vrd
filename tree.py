@@ -7,7 +7,7 @@ class TreeNode(object):
         self.name = name
         self.so_labels = so_labels
         self.score = score
-        self.id = '{}_{}_{}'.format(name, duration[0], duration[1])
+        self.id = '{}_{}_{}_{}'.format(name, st_predicate, duration[0], duration[1])
         self.subj_tracklet = subj_tracklet
         self.obj_tracklet = obj_tracklet
         self.duration = duration
@@ -59,8 +59,6 @@ class TrackTree(object):
         self.if_node_exist_recursion(
             self.tree, node, search=False, if_del=False)
         if self.if_node_exist:
-            # print('Error: Node %s has already existed!' % node.id)
-            # print('*' * 30)
             return False
         else:
             if parent is None:
@@ -68,8 +66,6 @@ class TrackTree(object):
                 root_children = self.tree.children
                 root_children.append(node)
                 self.tree.children = root_children
-                # print('Add node:%s sucessfully!' % node.id)
-                # print('*' * 30)
                 return True
             else:
                 # check whether the parent node exists
@@ -79,13 +75,8 @@ class TrackTree(object):
                 if self.if_node_exist:
                     # if parent node exists
                     self.add_recursion(parent.id, node, self.tree)
-                    # print('Add node:%s sucessfully!' % node.id)
-                    # print('*' * 30)
                     return True
                 else:
-                    # If parent node doesnt exist
-                    # print("Error: Parent node %s doesn't exist!" % parent.id)
-                    # print('*' * 30)
                     return False
 
     def search(self, node):
@@ -93,17 +84,8 @@ class TrackTree(object):
         self.if_node_exist_recursion(
             self.tree, node, search=True, if_del=False)
         if self.if_node_exist:
-            # If exists, return parents node & children
-            # print("%s's parent:" % node.id)
-            # pt(self.search_result_parent)
-            # print("%s's children:" % node.id)
-            # pt(self.search_result_children)
-            # print('*' * 30)
             return self.search_result_parent, self.search_result_children
         else:
-            # If dosent exist
-            # print("Error: Node %s doesn't exist!" % node.id)
-            # print('*' * 30)
             return None, None
 
     def delete(self, node):
@@ -111,12 +93,8 @@ class TrackTree(object):
         self.if_node_exist_recursion(
             self.tree, node, search=False, if_del=True)
         if not self.if_node_exist:
-            # print("Error: Node %s doesn't exist!" % node.id)
-            # print('*' * 30)
             return False
         else:
-            # print('Delete node %s sucessfully!' % node.id)
-            # print('*' * 30)
             return True
 
     def modify(self, node, new_parent=None):
@@ -125,8 +103,6 @@ class TrackTree(object):
         self.if_node_exist_recursion(
             self.tree, node, search=False, if_del=False)
         if not self.if_node_exist:
-            # print("Error: Node %s doesn't exist!" % node.id)
-            # print('*' * 30)
             return False
         else:
             if new_parent is None:
@@ -137,8 +113,6 @@ class TrackTree(object):
                 root_children = self.tree.children
                 root_children.append(node)
                 self.tree.children = root_children
-                # print('Modify node:%s sucessfully!' % node.id)
-                # print('*' * 30)
                 return True
             else:
                 # Check whether parent exist
@@ -151,14 +125,8 @@ class TrackTree(object):
                     self.if_node_exist_recursion(
                         self.tree, node, search=False, if_del=True)
                     self.add_recursion(new_parent.id, node, self.tree)
-                    # print('Modify node:%s sucessfully!' % node.id)
-                    # print('*' * 30)
                     return True
                 else:
-                    # parent doesnt exist
-                    # print("Error: Parent node %s doesn't exist!" %
-                    #       new_parent.id)
-                    # print('*' * 30)
                     return False
 
     def show_tree(self):
@@ -236,5 +204,8 @@ class TrackTree(object):
             for each_child in each_start_node.children:
                 for each_child_path in self.get_paths(each_child):
                     paths.append([each_start_node] + each_child_path)
+        for i, each_path in enumerate(paths):
+            if each_path[0].duration == [0, 0]:
+                paths[i] = each_path[1:]
         return paths
 

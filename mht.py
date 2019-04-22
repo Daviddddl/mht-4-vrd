@@ -15,10 +15,13 @@ splits = ['train', 'test']
 so_id = dict()
 
 
-def origin_mht_relational_association(short_term_relations, truncate_per_segment=100, top_tree=3):
+def origin_mht_relational_association(short_term_relations,
+                                      truncate_per_segment=100, top_tree=3, overlap=0.3, iou_thr=0.5):
     """
     This is not the very official MHT framework, which mainly is 4 frame-level.
     This func is to associating short-term-relations relational.
+    :param overlap: overlap 4 obj id
+    :param iou_thr: iou for associate
     :param top_tree:
     :param short_term_relations:
     :param truncate_per_segment:
@@ -30,7 +33,6 @@ def origin_mht_relational_association(short_term_relations, truncate_per_segment
         pstart_relations[r['duration'][0]].append(r)
 
     tree_dict = dict()
-
     for pstart in sorted(pstart_relations.keys()):
         sorted_relations = sorted(pstart_relations[pstart], key=lambda r: r['score'], reverse=True)
         sorted_relations = sorted_relations[:truncate_per_segment]
@@ -46,47 +48,40 @@ def origin_mht_relational_association(short_term_relations, truncate_per_segment
             subj_traj = Trajectory(duration[0], duration[1], subj_tracklet, score)
             obj_traj = Trajectory(duration[0], duration[1], obj_tracklet, score)
 
-            subj = get_obj_id(subj_label, subj_traj)
-            obj = get_obj_id(obj_label, obj_traj)
+            subj = subj_label + '#' + str(get_obj_id(subj_label, subj_traj, overlap))
+            obj = obj_label + '#' + str(get_obj_id(obj_label, obj_traj, overlap))
             each_tree = (subj, obj)
+
+            new_tree_node = TreeNode(name=each_tree,
+                                     so_labels=(subj_label, obj_label),
+                                     score=score,
+                                     st_predicate=pred_rela,
+                                     subj_tracklet=subj_tracklet,
+                                     obj_tracklet=obj_tracklet,
+                                     duration=duration)
 
             if each_tree not in tree_dict.keys():
                 tree_dict[each_tree] = TrackTree()
-                new_tree_node = TreeNode(name=each_tree,
-                                         so_labels=(subj_label, obj_label),
-                                         score=score,
-                                         st_predicate=pred_rela,
-                                         subj_tracklet=subj_tracklet,
-                                         obj_tracklet=obj_tracklet,
-                                         duration=duration)
                 tree_dict[each_tree].add(new_tree_node)
             else:
                 track_tree = tree_dict[each_tree]
-                new_tree_node = TreeNode(name=each_tree,
-                                         so_labels=(subj_label, obj_label),
-                                         score=score,
-                                         st_predicate=pred_rela,
-                                         subj_tracklet=subj_tracklet,
-                                         obj_tracklet=obj_tracklet,
-                                         duration=duration)
-
                 if duration[0] == 0:
-                    track_tree.add(new_tree_node)
+                    track_tree.add(new_tree_node, track_tree.tree)
                 else:
                     for each_path in track_tree.get_paths():
-                        if check_2_nodes(each_path[-1], new_tree_node):
+                        if check_2_nodes(each_path[-1], new_tree_node, iou_thr):
                             track_tree.add(new_tree_node, each_path[-1])
+
     # generate results
     video_relation_list = list()
-    for each_triplet, each_tree in tree_dict.items():
-        # save_res_path = 'test_out.json'
+    for each_pair, each_tree in tree_dict.items():
         top_k_paths, top_k_scores = generate_results(each_tree, top_tree)
         for each_path in top_k_paths:
             video_relation_list.append(associate_path(each_path))
     return [r.serialize() for r in video_relation_list]
 
 
-def get_obj_id(obj, obj_traj, overlap_threshold=0.5):
+def get_obj_id(obj, obj_traj, overlap_threshold):
     if obj in so_id.keys():
         obj_id = -1
         obj_track_overlap = overlap_threshold
@@ -98,34 +93,14 @@ def get_obj_id(obj, obj_traj, overlap_threshold=0.5):
                 obj_track_overlap = each_overlap
                 obj_id = each_obj_id
         if obj_id == -1:
-            so_id[obj][max_id + 1] = obj_traj
+            obj_id = max_id + 1
+            so_id[obj][obj_id] = obj_traj
         else:
             so_id[obj][obj_id] = merge_trajs(so_id[obj][obj_id], obj_traj)
     else:
         obj_id = 0
         so_id[obj] = {0: obj_traj}
     return obj_id
-
-
-def get_gating(pre_traj, distance_threshold=0.5):
-    """
-    Where the next observation of the track is expected to appear. Use mahalanobis distance.
-    :param pre_traj: track 2 b predicted
-    :param distance_threshold: distance threshold
-    :return: a gating area where the next observation of the track is expected 2 appear.
-    """
-    pre_location = np.array(pre_traj[-1])
-    predict = np.array(gating_predict(pre_traj))
-    distance = np.dot((predict - pre_location).T, )
-    mahalanobis_distance = mahalanobis(pre_location, predict, pre_traj)
-    if mahalanobis_distance <= distance_threshold:
-        return True
-    return False
-
-
-def gating_predict(pre_traj):
-    predict_result = pre_traj[-1]
-    return predict_result
 
 
 def track_score(track_path):
@@ -141,15 +116,6 @@ def track_score(track_path):
     for each_node in track_path:
         path_score += each_node.score
     return path_score / len(track_path)
-
-
-def global_hypo(track_trees):
-    """
-    Determine the most likely combination of object tracks at frame k.
-    NP-hard, Maximum Weighted Independent Set Problem (MWIS)
-    :param track_trees: a set of trees containing all traj hypotheses 4 all targets
-    :return:
-    """
 
 
 def generate_results(track_tree, top_k):
@@ -212,5 +178,5 @@ if __name__ == '__main__':
     result = origin_mht_relational_association(test_st_rela)
 
     print(len(result))
-    for each_res in result:
-        print(each_res)
+    # for each_res in result:
+    #     print(each_res)
