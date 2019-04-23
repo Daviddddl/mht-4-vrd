@@ -68,22 +68,20 @@ def origin_mht_relational_association(short_term_relations,
                     track_tree.add(new_tree_node, track_tree.tree)
                 else:
                     for each_path in track_tree.get_paths():
-                        if check_2_nodes(each_path[-1], new_tree_node, iou_thr):
-                            track_tree.add(new_tree_node, each_path[-1])
+                        if new_tree_node.st_predicate in [i[0] for i in get_path_predicate_score(each_path)]:
+                            if check_2_nodes(each_path[-1], new_tree_node, iou_thr):
+                                track_tree.add(new_tree_node, each_path[-1])
+                        else:
+                            if each_path[-1].duration[0] < new_tree_node.duration[0] < each_path[-1].duration[1] < new_tree_node.duration[1]:
+                                track_tree.add(new_tree_node, each_path[-1])
 
     # generate results
-    pred_set = set()
     video_relation_list = list()
     for each_pair, each_tree in tree_dict.items():
-        for each_path in each_tree.get_paths():
-            for each_node in each_path:
-                pred_set.add(each_node.st_predicate)
-
         top_k_paths, top_k_scores = generate_results(each_tree, top_tree)
         for each_path in top_k_paths:
             video_relation_list.append(associate_path(each_path))
 
-    print(pred_set)
     return [r.serialize() for r in video_relation_list]
 
 
@@ -146,8 +144,7 @@ def generate_results(track_tree, top_k):
     return top_k_res, top_k_scores
 
 
-def associate_path(track_path):
-    result = None
+def get_path_predicate_score(track_path):
     preds = dict()
     for each_node in track_path:
         each_st_predicate = each_node.st_predicate
@@ -161,6 +158,13 @@ def associate_path(track_path):
         preds[each_pred] = np.mean(each_scores)
 
     preds_list = sorted(preds.items(), key=lambda item: item[1], reverse=True)
+    return preds_list
+
+
+def associate_path(track_path):
+    result = None
+
+    preds_list = get_path_predicate_score(track_path)
     for each_node in track_path:
         if each_node.duration != [0, 0]:
             sub, obj = each_node.so_labels
@@ -184,5 +188,10 @@ if __name__ == '__main__':
     result = origin_mht_relational_association(test_st_rela)
 
     print(len(result))
-    # for each_res in result:
-    #     print(each_res)
+    show_res_num = 50
+    for each_res in result:
+        if show_res_num >= 0:
+            show_res_num -= 1
+            print(each_res)
+        else:
+            exit(0)

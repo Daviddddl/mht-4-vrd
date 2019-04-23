@@ -133,7 +133,7 @@ def merge_trajs(traj_1, traj_2):
     try:
         assert traj_1.pend > traj_2.pstart and traj_1.pstart < traj_2.pend
     except AssertionError:
-        print('{}-{} {}-{}'.format(traj_1.pstart, traj_1.pend, traj_2.pstart, traj_2.pend))
+        print('{}-{} {}-{}, cannot merge'.format(traj_1.pstart, traj_1.pend, traj_2.pstart, traj_2.pend))
     overlap_length = max(traj_1.pend - traj_2.pstart, 0)
     for i in range(overlap_length):
         roi_1 = traj_1.rois[traj_1.length() - overlap_length + i]
