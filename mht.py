@@ -3,8 +3,7 @@ from collections import defaultdict
 
 import numpy as np
 
-from relation import VideoRelation
-from track_utils import check_2_nodes, traj_iou_over_common_frames, merge_trajs
+from relation import VideoRelation, _merge_trajs, _traj_iou_over_common_frames
 from trajectory import Trajectory
 from tree import TrackTree, TreeNode
 
@@ -15,7 +14,7 @@ so_id = dict()
 
 
 def origin_mht_relational_association(short_term_relations,
-                                      truncate_per_segment=100, top_tree=10, overlap=0.3, iou_thr=0.3):
+                                      truncate_per_segment=100, top_tree=5, overlap=0.3, iou_thr=0.5):
     """
     This is not the very official MHT framework, which mainly is 4 frame-level.
     This func is to associating short-term-relations relational.
@@ -67,21 +66,27 @@ def origin_mht_relational_association(short_term_relations,
                 if duration[0] == 0:
                     track_tree.add(new_tree_node, track_tree.tree)
                 else:
+                    add_this_node = False
                     for each_path in track_tree.get_paths():
                         if new_tree_node.st_predicate in [i[0] for i in get_path_predicate_score(each_path)]:
-                            if check_2_nodes(each_path[-1], new_tree_node, iou_thr):
-                                track_tree.add(new_tree_node, each_path[-1])
-                        else:
-                            if each_path[-1].duration[0] < new_tree_node.duration[0] < each_path[-1].duration[1] < new_tree_node.duration[1]:
-                                track_tree.add(new_tree_node, each_path[-1])
+                            add_this_node = True
+                        if gating(each_path[-1], new_tree_node, iou_thr):
+                            add_this_node = track_tree.add(new_tree_node, each_path[-1])
+                    if not add_this_node:
+                        track_tree.add(new_tree_node, track_tree.tree)
 
     # generate results
     video_relation_list = list()
+    st_pred_set = set()
+
     for each_pair, each_tree in tree_dict.items():
+        for each_path in each_tree.get_paths():
+            for each_node in each_path:
+                st_pred_set.add(each_node.st_predicate)
         top_k_paths, top_k_scores = generate_results(each_tree, top_tree)
         for each_path in top_k_paths:
             video_relation_list.append(associate_path(each_path))
-
+    print(len(st_pred_set), st_pred_set)
     return [r.serialize() for r in video_relation_list]
 
 
@@ -91,7 +96,7 @@ def get_obj_id(obj, obj_traj, overlap_threshold):
         obj_track_overlap = overlap_threshold
         max_id = -1
         for each_obj_id, each_obj_traj in so_id[obj].items():
-            each_overlap = traj_iou_over_common_frames(obj_traj, each_obj_traj)
+            each_overlap = _traj_iou_over_common_frames(obj_traj, each_obj_traj)
             max_id = max(max_id, each_obj_id)
             if each_overlap > obj_track_overlap >= overlap_threshold:
                 obj_track_overlap = each_overlap
@@ -100,7 +105,7 @@ def get_obj_id(obj, obj_traj, overlap_threshold):
             obj_id = max_id + 1
             so_id[obj][obj_id] = obj_traj
         else:
-            so_id[obj][obj_id] = merge_trajs(so_id[obj][obj_id], obj_traj)
+            so_id[obj][obj_id] = _merge_trajs(so_id[obj][obj_id], obj_traj)
     else:
         obj_id = 0
         so_id[obj] = {0: obj_traj}
@@ -181,6 +186,36 @@ def associate_path(track_path):
     return result
 
 
+def gating(tree_tail, new_tree_node, iou_thr, ignore_iou=False):
+    tail_start_f, tail_end_f = tree_tail.duration
+    new_node_start_f, new_node_end_f = new_tree_node.duration
+    if tail_start_f < new_node_start_f < tail_end_f < new_node_end_f:
+        if ignore_iou:
+            return True
+        overlap_start, overlap_end = new_node_start_f, tail_end_f
+        subj_tail_track = tree_tail.subj_tracklet[(overlap_start - tail_start_f):
+                                                  (overlap_end - tail_start_f)]
+        obj_tail_track = tree_tail.obj_tracklet[(overlap_start - tail_start_f):
+                                                (overlap_end - tail_start_f)]
+        subj_new_track = new_tree_node.subj_tracklet[(overlap_start - new_node_start_f):
+                                                     (overlap_end - new_node_start_f)]
+        obj_new_track = new_tree_node.obj_tracklet[(overlap_start - new_node_start_f):
+                                                   (overlap_end - new_node_start_f)]
+        # generate trajectory
+        subj_tail_traj = Trajectory(overlap_start, overlap_end, subj_tail_track, tree_tail.score)
+        subj_new_traj = Trajectory(overlap_start, overlap_end, subj_new_track, new_tree_node.score)
+        obj_tail_traj = Trajectory(overlap_start, overlap_end, obj_tail_track, tree_tail.score)
+        obj_new_traj = Trajectory(overlap_start, overlap_end, obj_new_track, new_tree_node.score)
+
+        return check_overlap(subj_tail_traj, subj_new_traj, iou_thr) and check_overlap(obj_tail_traj, obj_new_traj,
+                                                                                       iou_thr)
+    return False
+
+
+def check_overlap(traj1, traj2, iou_thr):
+    return _traj_iou_over_common_frames(traj1, traj2) >= iou_thr
+
+
 if __name__ == '__main__':
     with open('test2.json', 'r') as test_st_rela_f:
         test_st_rela = json.load(test_st_rela_f)
@@ -189,9 +224,11 @@ if __name__ == '__main__':
 
     print(len(result))
     show_res_num = 50
+    res_length = dict()
     for each_res in result:
-        if show_res_num >= 0:
-            show_res_num -= 1
-            print(each_res)
+        each_res_length = each_res['duration'][1] - each_res['duration'][0]
+        if each_res_length in res_length.keys():
+            res_length[each_res_length] += 1
         else:
-            exit(0)
+            res_length[each_res_length] = 1
+    print(res_length)
