@@ -14,7 +14,7 @@ so_id = dict()
 
 
 def origin_mht_relational_association(short_term_relations,
-                                      truncate_per_segment=100, top_tree=5, overlap=0.3, iou_thr=0.5):
+                                      truncate_per_segment=100, top_tree=3, overlap=0.3, iou_thr=0.5):
     """
     This is not the very official MHT framework, which mainly is 4 frame-level.
     This func is to associating short-term-relations relational.
@@ -66,13 +66,15 @@ def origin_mht_relational_association(short_term_relations,
                 if duration[0] == 0:
                     track_tree.add(new_tree_node, track_tree.tree)
                 else:
-                    add_this_node = False
+                    add_this_new_node = False
+                    now_st_predicate_set = set()
                     for each_path in track_tree.get_paths():
-                        if new_tree_node.st_predicate in [i[0] for i in get_path_predicate_score(each_path)]:
-                            add_this_node = True
+                        for each_node in each_path:
+                            now_st_predicate_set.add(each_node)
                         if gating(each_path[-1], new_tree_node, iou_thr):
-                            add_this_node = track_tree.add(new_tree_node, each_path[-1])
-                    if not add_this_node:
+                            if track_tree.add(new_tree_node, each_path[-1]):
+                                add_this_new_node = True
+                    if not add_this_new_node:
                         track_tree.add(new_tree_node, track_tree.tree)
 
     # generate results
@@ -118,9 +120,6 @@ def track_score(track_path):
     Score = weight_motion * score_motion + weight_appearance * score_appearance
     :return:
     """
-    weight_motion, score_motion, weight_appearance, score_appearance = 0, 0, 0, 0
-    score = weight_motion * score_motion + weight_appearance * score_appearance
-
     path_score = 0.
     for each_node in track_path:
         path_score += each_node.score
@@ -186,12 +185,10 @@ def associate_path(track_path):
     return result
 
 
-def gating(tree_tail, new_tree_node, iou_thr, ignore_iou=False):
+def gating(tree_tail, new_tree_node, iou_thr):
     tail_start_f, tail_end_f = tree_tail.duration
     new_node_start_f, new_node_end_f = new_tree_node.duration
     if tail_start_f < new_node_start_f < tail_end_f < new_node_end_f:
-        if ignore_iou:
-            return True
         overlap_start, overlap_end = new_node_start_f, tail_end_f
         subj_tail_track = tree_tail.subj_tracklet[(overlap_start - tail_start_f):
                                                   (overlap_end - tail_start_f)]
@@ -207,8 +204,8 @@ def gating(tree_tail, new_tree_node, iou_thr, ignore_iou=False):
         obj_tail_traj = Trajectory(overlap_start, overlap_end, obj_tail_track, tree_tail.score)
         obj_new_traj = Trajectory(overlap_start, overlap_end, obj_new_track, new_tree_node.score)
 
-        return check_overlap(subj_tail_traj, subj_new_traj, iou_thr) and check_overlap(obj_tail_traj, obj_new_traj,
-                                                                                       iou_thr)
+        return check_overlap(subj_tail_traj, subj_new_traj, iou_thr) \
+            and check_overlap(obj_tail_traj, obj_new_traj, iou_thr)
     return False
 
 
@@ -217,7 +214,7 @@ def check_overlap(traj1, traj2, iou_thr):
 
 
 if __name__ == '__main__':
-    with open('test2.json', 'r') as test_st_rela_f:
+    with open('test.json', 'r') as test_st_rela_f:
         test_st_rela = json.load(test_st_rela_f)
 
     result = origin_mht_relational_association(test_st_rela)
