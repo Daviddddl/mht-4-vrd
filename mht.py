@@ -14,7 +14,7 @@ so_id = dict()
 
 
 def origin_mht_relational_association(short_term_relations,
-                                      truncate_per_segment=100, top_tree=3, overlap=0.3, iou_thr=0.5):
+                                      truncate_per_segment=100, top_tree=5, overlap=0.3, iou_thr=0.3):
     """
     This is not the very official MHT framework, which mainly is 4 frame-level.
     This func is to associating short-term-relations relational.
@@ -66,16 +66,11 @@ def origin_mht_relational_association(short_term_relations,
                 if duration[0] == 0:
                     track_tree.add(new_tree_node, track_tree.tree)
                 else:
-                    add_this_new_node = False
-                    now_st_predicate_set = set()
                     for each_path in track_tree.get_paths():
-                        for each_node in each_path:
-                            now_st_predicate_set.add(each_node)
+                        if new_tree_node.st_predicate not in [i[0] for i in get_path_predicate_score(each_path)]:
+                            iou_thr = 0.
                         if gating(each_path[-1], new_tree_node, iou_thr):
-                            if track_tree.add(new_tree_node, each_path[-1]):
-                                add_this_new_node = True
-                    if not add_this_new_node:
-                        track_tree.add(new_tree_node, track_tree.tree)
+                            track_tree.add(new_tree_node, each_path[-1])
 
     # generate results
     video_relation_list = list()
@@ -214,18 +209,8 @@ def check_overlap(traj1, traj2, iou_thr):
 
 
 if __name__ == '__main__':
-    with open('test.json', 'r') as test_st_rela_f:
+    with open('test2.json', 'r') as test_st_rela_f:
         test_st_rela = json.load(test_st_rela_f)
 
     result = origin_mht_relational_association(test_st_rela)
-
     print(len(result))
-    show_res_num = 50
-    res_length = dict()
-    for each_res in result:
-        each_res_length = each_res['duration'][1] - each_res['duration'][0]
-        if each_res_length in res_length.keys():
-            res_length[each_res_length] += 1
-        else:
-            res_length[each_res_length] = 1
-    print(res_length)
