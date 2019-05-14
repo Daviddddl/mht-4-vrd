@@ -1,6 +1,8 @@
 import json
+import os
 
-st_prediction = 'baseline/vidvrd-dataset/vidvrd-baseline-output/short-term-predication.json'
+root_path = '/home/daivd/PycharmProjects/VidVRD-py3'
+st_prediction = os.path.join(root_path, 'baseline/vidvrd-dataset/vidvrd-baseline-output/short-term-predication.json')
 
 with open(st_prediction, 'r') as in_f:
     st = json.load(in_f)
