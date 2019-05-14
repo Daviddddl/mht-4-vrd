@@ -214,7 +214,7 @@ def check_overlap(traj1, traj2, iou_thr):
 
 
 if __name__ == '__main__':
-    with open('test.json', 'r') as test_st_rela_f:
+    with open('test2.json', 'r') as test_st_rela_f:
         test_st_rela = json.load(test_st_rela_f)
 
     result = origin_mht_relational_association(test_st_rela)
