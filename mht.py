@@ -3,6 +3,7 @@ from collections import defaultdict
 
 import numpy as np
 
+from itertools import product
 from relation import VideoRelation, _merge_trajs, _traj_iou_over_common_frames
 from trajectory import Trajectory
 from tree import TrackTree, TreeNode
@@ -71,19 +72,34 @@ def origin_mht_relational_association(short_term_relations,
                             iou_thr = 0.
                         if gating(each_path[-1], new_tree_node, iou_thr):
                             track_tree.add(new_tree_node, each_path[-1])
+                        else:
+                            # dummy
+                            if each_path[-1].duration[1] == new_tree_node.duration[0]:
+                                print("Dummy:", each_path[-1], new_tree_node)
+                                missing_node = TreeNode(name=each_path[-1].name,
+                                                        so_labels=each_path[-1].so_labels,
+                                                        score=each_path[-1].score,
+                                                        st_predicate=each_path[-1].st_predicate,
+                                                        subj_tracklet=each_path[-1].subj_tracklet,
+                                                        obj_tracklet=each_path[-1].obj_tracklet,
+                                                        duration=[each_path[-1].duration[0] + 15,
+                                                                  each_path[-1].duration[1] + 15])
+                                if gating(missing_node, new_tree_node, iou_thr):
+                                    track_tree.add(missing_node, each_path[-1])
+                                    track_tree.add(new_tree_node, missing_node)
 
     # generate results
     video_relation_list = list()
-    st_pred_set = set()
+    # st_pred_set = set()
 
     for each_pair, each_tree in tree_dict.items():
-        for each_path in each_tree.get_paths():
-            for each_node in each_path:
-                st_pred_set.add(each_node.st_predicate)
+        # for each_path in each_tree.get_paths():
+        #     for each_node in each_path:
+        #         st_pred_set.add(each_node.st_predicate)
         top_k_paths, top_k_scores = generate_results(each_tree, top_tree)
         for each_path in top_k_paths:
             video_relation_list.append(associate_path(each_path))
-    print(len(st_pred_set), st_pred_set)
+    # print(len(st_pred_set), st_pred_set)
     return [r.serialize() for r in video_relation_list]
 
 
@@ -200,7 +216,7 @@ def gating(tree_tail, new_tree_node, iou_thr):
         obj_new_traj = Trajectory(overlap_start, overlap_end, obj_new_track, new_tree_node.score)
 
         return check_overlap(subj_tail_traj, subj_new_traj, iou_thr) \
-            and check_overlap(obj_tail_traj, obj_new_traj, iou_thr)
+               and check_overlap(obj_tail_traj, obj_new_traj, iou_thr)
     return False
 
 
@@ -214,3 +230,10 @@ if __name__ == '__main__':
 
     result = origin_mht_relational_association(test_st_rela)
     print(len(result))
+    print_num = 20
+    for each_res in result:
+        if print_num >= 0:
+            print(each_res)
+            print_num -= 1
+        else:
+            exit(0)

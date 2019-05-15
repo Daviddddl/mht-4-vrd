@@ -9,4 +9,7 @@ with open(st_prediction, 'r') as in_f:
 
 test_vid = 'ILSVRC2015_train_00066007'
 with open('test.json', 'w+') as out_f:
-    out_f.write(json.dumps(st['result'][test_vid]))
+    test_out = {
+        "results": st[test_vid]
+    }
+    out_f.write(json.dumps(test_out))
