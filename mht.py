@@ -219,13 +219,3 @@ def gating(tree_tail, new_tree_node, iou_thr):
 
 def check_overlap(traj1, traj2, iou_thr):
     return _traj_iou_over_common_frames(traj1, traj2) >= iou_thr
-
-
-if __name__ == '__main__':
-    with open('test.json', 'r') as test_st_rela_f:
-        test_st_rela = json.load(test_st_rela_f)
-
-    result = origin_mht_relational_association(test_st_rela['results'])
-
-    with open('test_out.json', 'w+') as out_f:
-        out_f.write(json.dumps(result))

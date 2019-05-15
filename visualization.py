@@ -24,27 +24,48 @@ def visualization(data, data_type):
     plt.show()
 
 
-def compare_result(gt, pred, vid):
-    gt_sim = list()
-    pred_sim = list()
-    for each_ins in gt:
-        each_triplet = each_ins['triplet']
-        gt_sim.append({
-            str((each_triplet[0] + str(each_ins['subject_tid']),
-                 each_triplet[1],
-                 each_triplet[2] + str(each_ins['object_tid']))): each_ins['duration']
-        })
-    with open('gt_{}.json'.format(vid), 'w+') as out_gt:
-        out_gt.write(json.dumps(gt_sim))
+def compare_result(gt, pred, config):
+    if not os.path.exists('gt_sim.json'):
+        gt_sim = list()
+        for each_ins in gt:
+            each_triplet = each_ins['triplet']
+            gt_sim.append({
+                str((each_triplet[0] + str(each_ins['subject_tid']),
+                     each_triplet[1],
+                     each_triplet[2] + str(each_ins['object_tid']))): each_ins['duration']
+            })
+        with open('gt_sim.json', 'w+') as out_gt:
+            out_gt.write(json.dumps(gt_sim))
 
+    pred_sim = list()
     for each_ins in pred:
         each_triplet = each_ins['triplet']
         pred_sim.append({
             str(each_triplet): each_ins['duration'],
             'score': each_ins['score']
         })
-    with open('pred_{}.json'.format(vid), 'w+') as out_pred:
+    with open('pred_{}.json'.format(config), 'w+') as out_pred:
         out_pred.write(json.dumps(pred_sim))
+
+
+def convert_gt_to_pred(gt, vid):
+    gt_res = list()
+    for each_ins in gt:
+        gt_res.append({
+            'triplet': each_ins['triplet'],
+            'score': 1.0,
+            'duration': each_ins['duration'],
+            'sub_traj': each_ins['sub_traj'],
+            'obj_traj': each_ins['obj_traj']
+        })
+
+    pred_4mat = {
+        'results': {
+            vid: gt_res
+        }
+    }
+    with open('gt_pred_4mat.json', 'w+') as out_f:
+        out_f.write(json.dumps(pred_4mat))
 
 
 if __name__ == '__main__':
@@ -61,9 +82,12 @@ if __name__ == '__main__':
 
     test_vid = 'ILSVRC2015_train_00066007'
 
-    prediction_out = 'test_out_{}_{}_{}.json'.format(top_tree, overlap, iou_thr)
+    config = '{}_{}_{}'.format(top_tree, overlap, iou_thr)
+    prediction_out = 'test_out_{}.json'.format(config)
 
     with open(prediction_out, 'r') as in_f:
         pred_json = json.load(in_f)
 
-    compare_result(dataset.get_relation_insts(test_vid, no_traj=True), pred_json['results'][test_vid], test_vid)
+    compare_result(dataset.get_relation_insts(test_vid, no_traj=True), pred_json['results'][test_vid], config)
+
+    # convert_gt_to_pred(dataset.get_relation_insts(test_vid), test_vid)
