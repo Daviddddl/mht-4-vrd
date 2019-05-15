@@ -50,6 +50,9 @@ if __name__ == '__main__':
     anno_rpath = 'vidvrd-dataset'
     video_rpath = ''
     splits = ['test']
+    dataset = VidVRD(anno_rpath=anno_rpath,
+                     video_rpath=video_rpath,
+                     splits=splits)
 
     top_tree = 20
     overlap = 0.3
@@ -73,10 +76,6 @@ if __name__ == '__main__':
                 "results": {test_vid: result}
             }
             out_f.write(json.dumps(result))
-
-    dataset = VidVRD(anno_rpath=anno_rpath,
-                     video_rpath=video_rpath,
-                     splits=splits)
 
     print('Number of videos in prediction: {}'.format(len(result['results'])))
     evaluate_relation(dataset, 'test', result['results'])

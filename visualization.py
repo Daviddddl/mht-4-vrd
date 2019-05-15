@@ -24,21 +24,46 @@ def visualization(data, data_type):
     plt.show()
 
 
-if __name__ == '__main__':
-    root_path = '/home/daivd/PycharmProjects/VidVRD-py3'
-    anno_rpath = os.path.join(root_path, 'baseline/vidvrd-dataset')
-    video_rpath = os.path.join(root_path, 'baseline/vidvrd-dataset/videos')
-    splits = ['train', 'test']
-    dataset = VidVRD(anno_rpath, video_rpath, splits)
+def compare_result(gt, pred, vid):
+    gt_sim = list()
+    pred_sim = list()
+    for each_ins in gt:
+        each_triplet = each_ins['triplet']
+        gt_sim.append({
+            str((each_triplet[0] + str(each_ins['subject_tid']),
+                 each_triplet[1],
+                 each_triplet[2] + str(each_ins['object_tid']))): each_ins['duration']
+        })
+    with open('gt_{}.json'.format(vid), 'w+') as out_gt:
+        out_gt.write(json.dumps(gt_sim))
 
-    vid = 'ILSVRC2015_train_00010018'
+    for each_ins in pred:
+        each_triplet = each_ins['triplet']
+        pred_sim.append({
+            str(each_triplet): each_ins['duration'],
+            'score': each_ins['score']
+        })
+    with open('pred_{}.json'.format(vid), 'w+') as out_pred:
+        out_pred.write(json.dumps(pred_sim))
+
+
+if __name__ == '__main__':
+    anno_rpath = 'vidvrd-dataset'
+    video_rpath = ''
+    splits = ['test']
+    dataset = VidVRD(anno_rpath=anno_rpath,
+                     video_rpath=video_rpath,
+                     splits=splits)
 
     top_tree = 20
-    overlap = 0.2
-    iou_thr = 0.2
-    test_result_name = 'mht_test_relation_prediction_v4_{}_{}_{}.json'.format(top_tree, overlap, iou_thr)
+    overlap = 0.3
+    iou_thr = 0.3
 
-    with open(test_result_name, 'r') as in_f:
+    test_vid = 'ILSVRC2015_train_00066007'
+
+    prediction_out = 'test_out_{}_{}_{}.json'.format(top_tree, overlap, iou_thr)
+
+    with open(prediction_out, 'r') as in_f:
         pred_json = json.load(in_f)
 
-    visualization(dataset.get_relation_insts(vid), 'gt')
+    compare_result(dataset.get_relation_insts(test_vid, no_traj=True), pred_json['results'][test_vid], test_vid)
