@@ -1,7 +1,8 @@
 import json
-
+import os
 from dataset import VidVRD
 from evaluation import eval_video_object, eval_action, eval_visual_relation
+from mht import origin_mht_relational_association
 
 
 def evaluate_object(dataset, split, prediction):
@@ -24,25 +25,25 @@ def evaluate_relation(dataset, split, prediction):
         groundtruth[vid] = dataset.get_relation_insts(vid)
     mean_ap, rec_at_n, mprec_at_n = eval_visual_relation(groundtruth, prediction)
 
-    # evaluate in zero-shot setting, if u need
-    print('-- zero-shot setting')
-    zeroshot_triplets = dataset.get_triplets(split).difference(
-        dataset.get_triplets('train'))
-    groundtruth = dict()
-    zs_prediction = dict()
-    for vid in dataset.get_index(split):
-        gt_relations = dataset.get_relation_insts(vid)
-        zs_gt_relations = []
-        for r in gt_relations:
-            if tuple(r['triplet']) in zeroshot_triplets:
-                zs_gt_relations.append(r)
-        if len(zs_gt_relations) > 0:
-            groundtruth[vid] = zs_gt_relations
-            zs_prediction[vid] = []
-            for r in prediction[vid]:
-                if tuple(r['triplet']) in zeroshot_triplets:
-                    zs_prediction[vid].append(r)
-    mean_ap, rec_at_n, mprec_at_n = eval_visual_relation(groundtruth, zs_prediction)
+    # # evaluate in zero-shot setting, if u need
+    # print('-- zero-shot setting')
+    # zeroshot_triplets = dataset.get_triplets(split).difference(
+    #     dataset.get_triplets('train'))
+    # groundtruth = dict()
+    # zs_prediction = dict()
+    # for vid in dataset.get_index(split):
+    #     gt_relations = dataset.get_relation_insts(vid)
+    #     zs_gt_relations = []
+    #     for r in gt_relations:
+    #         if tuple(r['triplet']) in zeroshot_triplets:
+    #             zs_gt_relations.append(r)
+    #     if len(zs_gt_relations) > 0:
+    #         groundtruth[vid] = zs_gt_relations
+    #         zs_prediction[vid] = []
+    #         for r in prediction[vid]:
+    #             if tuple(r['triplet']) in zeroshot_triplets:
+    #                 zs_prediction[vid].append(r)
+    # mean_ap, rec_at_n, mprec_at_n = eval_visual_relation(groundtruth, zs_prediction)
 
 
 if __name__ == '__main__':
@@ -51,19 +52,31 @@ if __name__ == '__main__':
     splits = ['test']
 
     top_tree = 20
-    overlap = 0.2
-    iou_thr = 0.2
+    overlap = 0.3
+    iou_thr = 0.3
 
-    prediction = 'test_out.json'
+    test_vid = 'ILSVRC2015_train_00066007'
+
+    prediction_out = 'test_out_{}_{}_{}.json'.format(top_tree, overlap, iou_thr)
+    if os.path.exists(prediction_out):
+        print('Loading prediction from {}'.format(prediction_out))
+        with open(prediction_out, 'r') as fin:
+            result = json.load(fin)
+    else:
+        with open('test.json', 'r') as test_st_rela_f:
+            test_st_rela = json.load(test_st_rela_f)
+
+        result = origin_mht_relational_association(test_st_rela['results'])
+
+        with open(prediction_out, 'w+') as out_f:
+            result = {
+                "results": {test_vid: result}
+            }
+            out_f.write(json.dumps(result))
+
     dataset = VidVRD(anno_rpath=anno_rpath,
                      video_rpath=video_rpath,
                      splits=splits)
 
-    print('Loading prediction from {}'.format(prediction))
-    with open(prediction, 'r') as fin:
-        pred = json.load(fin)
-
-    print('Number of videos in prediction: {}'.format(len(pred['results'])))
-
-    # modify the split ['train', 'test']
-    evaluate_relation(dataset, 'test', pred['results'])
+    print('Number of videos in prediction: {}'.format(len(result['results'])))
+    evaluate_relation(dataset, 'test', result['results'])

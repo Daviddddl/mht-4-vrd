@@ -2,15 +2,12 @@ import json
 from collections import defaultdict
 
 import numpy as np
+from tqdm import tqdm
 
-from itertools import product
 from relation import VideoRelation, _merge_trajs, _traj_iou_over_common_frames
 from trajectory import Trajectory
 from tree import TrackTree, TreeNode
 
-anno_rpath = 'baseline/vidvrd-dataset'
-video_rpath = 'baseline/vidvrd-dataset/videos'
-splits = ['train', 'test']
 so_id = dict()
 
 
@@ -32,7 +29,7 @@ def origin_mht_relational_association(short_term_relations,
         pstart_relations[r['duration'][0]].append(r)
 
     tree_dict = dict()
-    for pstart in sorted(pstart_relations.keys()):
+    for pstart in tqdm(sorted(pstart_relations.keys())):
         sorted_relations = sorted(pstart_relations[pstart], key=lambda r: r['score'], reverse=True)
         sorted_relations = sorted_relations[:truncate_per_segment]
 
@@ -75,7 +72,7 @@ def origin_mht_relational_association(short_term_relations,
                         else:
                             # dummy
                             if each_path[-1].duration[1] == new_tree_node.duration[0]:
-                                print("Dummy:", each_path[-1], new_tree_node)
+                                # print("Dummy:", each_path[-1], new_tree_node)
                                 missing_node = TreeNode(name=each_path[-1].name,
                                                         so_labels=each_path[-1].so_labels,
                                                         score=each_path[-1].score,
@@ -225,15 +222,10 @@ def check_overlap(traj1, traj2, iou_thr):
 
 
 if __name__ == '__main__':
-    with open('test2.json', 'r') as test_st_rela_f:
+    with open('test.json', 'r') as test_st_rela_f:
         test_st_rela = json.load(test_st_rela_f)
 
-    result = origin_mht_relational_association(test_st_rela)
-    print(len(result))
-    print_num = 20
-    for each_res in result:
-        if print_num >= 0:
-            print(each_res)
-            print_num -= 1
-        else:
-            exit(0)
+    result = origin_mht_relational_association(test_st_rela['results'])
+
+    with open('test_out.json', 'w+') as out_f:
+        out_f.write(json.dumps(result))
