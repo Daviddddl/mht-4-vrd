@@ -83,10 +83,14 @@ if __name__ == '__main__':
 
     print('Number of videos in prediction: {}'.format(len(result['results'])))
 
-    # prediction_out = 'gt_pred_4mat.json'
-    # with open(prediction_out, 'r') as gt_f:
-    #     result = json.load(gt_f)
-
     evaluate_relation(dataset, 'test', result['results'])
 
     compare_result(dataset.get_relation_insts(test_vid, no_traj=True), result['results'][test_vid], config)
+
+    # prediction_out = 'test.json'
+    # with open(prediction_out, 'r') as gt_f:
+    #     result = json.load(gt_f)
+    # result = {
+    #     test_vid: result['results']
+    # }
+    # evaluate_relation(dataset, 'test', result)
