@@ -85,6 +85,9 @@ def origin_mht_relational_association(short_term_relations,
                                     track_tree.add(missing_node, each_path[-1])
                                     track_tree.add(new_tree_node, missing_node)
 
+                # pruning the tree every time updating
+                pruning(track_tree, thr_complexity=30)
+
     # generate results
     video_relation_list = list()
     # st_pred_set = set()
@@ -132,6 +135,25 @@ def track_score(track_path):
     for each_node in track_path:
         path_score += each_node.score
     return path_score / len(track_path)
+
+
+def pruning(track_tree, thr_complexity):
+    """
+    pruning the track_tree when it get updated to keep it under a threshold & executable。
+    :param track_path:
+    :param thr_complexity:
+    :return:
+    """
+    # This part of code is missing, will fix it up later
+    pass
+
+    # paths = get_all_path_from_tree(track_tree)
+
+    # # There are two choice to prune.
+    # # 1. simply delete low score proposal, to keep all number of hypothesis under the threshold
+    # sim_pruning_trees(rank(paths), thr_complexity)
+    # # 2. Retrospective pruning the tree, this is a little complicated
+    # retro_ pruning_trees(rank(paths), thr_complexity)
 
 
 def generate_results(track_tree, top_k):
